@@ -1,6 +1,8 @@
 package com.huishoubao.sched;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.util.Log;
@@ -18,8 +20,6 @@ import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.util.concurrent.CompletionStage;
 
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
@@ -63,9 +63,9 @@ public class MainActivity extends AppCompatActivity
         socket.on("pong", onPong);
         socket.on("authenticated", onAuthenticated);
         socket.on("tasks created", onTaskCreated);
-        socket.on("command goto", onGoto);
+        socket.on("commands goto", onGoto);
         socket.connect();
-        Toast.makeText(getApplicationContext(), "Connecting...", Toast.LENGTH_LONG).show();
+        setMainText("Connecting");
     }
 
     @Override
@@ -104,8 +104,6 @@ public class MainActivity extends AppCompatActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         if (id == R.id.nav_checkin) {
-            // Handle the camera action
-            checkin("100000000088");
         } else if (id == R.id.nav_done) {
             sendDoneMessage("lcd.white");
         } else if (id == R.id.nav_slideshow) {
@@ -127,6 +125,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void call(Object... args) {
             toast("Connected");
+            setMainText("Connected");
         }
     };
 
@@ -148,7 +147,9 @@ public class MainActivity extends AppCompatActivity
     private Emitter.Listener onAuthenticated = new Emitter.Listener() {
         @Override
         public void call(Object... args) {
+            Log.d("SCHED", "=============================///authenticated");
             toast("Authenticated");
+            setMainText("Authenticated");
         }
     };
 
@@ -160,30 +161,12 @@ public class MainActivity extends AppCompatActivity
                 String stage = data.getString("stage");
                 toast("Goto: " + stage);
                 setMainText("GOTO: " + stage);
-                sendOnStageMessage(stage);
+                sendReadyMessage(stage); // 模拟返回ready message
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
     };
-
-    /**
-     * 向调度中心报告
-     * @param view
-     */
-    public void checkin (String sn) {
-        JSONObject data = new JSONObject();
-        JSONObject params = new JSONObject();
-        try {
-            params.put("sn", sn);
-            data.put("type", "checkin");
-            data.put("params", params);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        Log.d("MENU", "CHECKIN--------------------------------------------------------");
-        socket.emit("create", "messages", data);
-    }
 
     /**
      * 操作已完成 向调度中心报告
@@ -193,8 +176,8 @@ public class MainActivity extends AppCompatActivity
         JSONObject data = new JSONObject();
         JSONObject params = new JSONObject();
         try {
-            params.put("stage", stage);
             data.put("type", "done");
+            params.put("stage", stage);
             data.put("params", params);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -207,18 +190,23 @@ public class MainActivity extends AppCompatActivity
      * 操作已完成 向调度中心报告
      * @param view
      */
-    public void sendOnStageMessage (String stage) {
-        JSONObject data = new JSONObject();
+    public void sendReadyMessage(String stage) {
+        final JSONObject data = new JSONObject();
         JSONObject params = new JSONObject();
         try {
+            data.put("type", "ready");
             params.put("stage", stage);
-            data.put("type", "on-stage");
             data.put("params", params);
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        Log.d("MENU", "GOTO-OK--------------------------------------------------------");
-        socket.emit("create", "messages", data);
+        Log.d("MENU", "READY--------------------------------------------------------");
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            public void run() {
+                socket.emit("create", "messages", data);
+            }
+        }, 2000 );
     }
 
     private void toast (String text) {
@@ -242,3 +230,15 @@ public class MainActivity extends AppCompatActivity
         });
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

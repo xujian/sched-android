@@ -14,6 +14,8 @@ import io.socket.client.Socket;
 
 public class SchedApplication extends Application {
 
+    private String sn = "100000000088";
+
     private Socket socket;
     {
         try {
@@ -26,21 +28,14 @@ public class SchedApplication extends Application {
             socket.emit("authenticate", args, new Ack() {
                 @Override
                 public void call(Object... args) {
-                    Log.d("SCHED", "authenticate ack");
-                    Log.d("AUTH---", String.valueOf(args.length));
                     JSONObject response = (JSONObject) args[1];
+                    Log.d("SCHED", "=================================authenticate ack");
                     try {
-                        Log.d("AUTH---", response.toString(4));
+                        Log.d("SCHED", response.getString("accessToken"));
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    JSONObject data = new JSONObject();
-                    try {
-                        data.put("product", "100000000088");
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    socket.emit("create", "tasks", data);
+                    checkin();
                 }
             });
         } catch (URISyntaxException e) {
@@ -53,5 +48,27 @@ public class SchedApplication extends Application {
 
     public Socket getSocket() {
         return socket;
+    }
+
+    public String getSn() {
+        return sn;
+    }
+
+    /**
+     * 向调度中心报告
+     * @param view
+     */
+    public void checkin () {
+        JSONObject data = new JSONObject();
+        JSONObject params = new JSONObject();
+        try {
+            params.put("sn", sn);
+            data.put("type", "checkin");
+            data.put("params", params);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        Log.d("MENU", "CHECKIN--------------------------------------------------------");
+        socket.emit("create", "messages", data);
     }
 }
