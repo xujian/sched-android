@@ -21,6 +21,8 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Iterator;
+
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 
@@ -35,6 +37,9 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        SchedApplication app = (SchedApplication) this.getApplication();
+        TextView snText = (TextView) findViewById(R.id.snText);
+        snText.setText("sn=" + app.getSn());
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -64,8 +69,10 @@ public class MainActivity extends AppCompatActivity
         socket.on("authenticated", onAuthenticated);
         socket.on("tasks created", onTaskCreated);
         socket.on("commands goto", onGoto);
+        socket.on("messages hello", onHello);
+
         socket.connect();
-        setMainText("Connecting");
+        setStatus("Connecting");
     }
 
     @Override
@@ -103,13 +110,12 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-        if (id == R.id.nav_checkin) {
-        } else if (id == R.id.nav_done) {
+        if (id == R.id.nav_done_lcd) {
             sendDoneMessage("lcd.white");
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
+        } else if (id == R.id.nav_done_touch) {
+            sendDoneMessage("touch");
+        } else if (id == R.id.nav_done_sensors) {
+            sendDoneMessage("sensors");
         } else if (id == R.id.nav_share) {
 
         } else if (id == R.id.nav_send) {
@@ -125,7 +131,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void call(Object... args) {
             toast("Connected");
-            setMainText("Connected");
+            setStatus("Connected");
         }
     };
 
@@ -149,7 +155,7 @@ public class MainActivity extends AppCompatActivity
         public void call(Object... args) {
             Log.d("SCHED", "=============================///authenticated");
             toast("Authenticated");
-            setMainText("Authenticated");
+            setStatus("Authenticated");
         }
     };
 
@@ -160,8 +166,25 @@ public class MainActivity extends AppCompatActivity
             try {
                 String stage = data.getString("stage");
                 toast("Goto: " + stage);
-                setMainText("GOTO: " + stage);
-                sendReadyMessage(stage); // 模拟返回ready message
+                setStage(stage);
+                sendReadyMessage(stage, new JSONObject()); // 模拟返回ready message
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
+    private Emitter.Listener onHello = new Emitter.Listener() {
+        @Override
+        public void call(Object... args) {
+            JSONObject data = (JSONObject) args[0];
+            try {
+                String random = data.getString("random");
+                toast("Message: hello");
+                setStage("hello:" + random);
+                JSONObject params = new JSONObject();
+                params.put("random", random);
+                sendReadyMessage("hello", params);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -190,12 +213,17 @@ public class MainActivity extends AppCompatActivity
      * 操作已完成 向调度中心报告
      * @param view
      */
-    public void sendReadyMessage(String stage) {
+    public void sendReadyMessage(String stage, JSONObject params) {
         final JSONObject data = new JSONObject();
-        JSONObject params = new JSONObject();
+        JSONObject p = new JSONObject();
         try {
             data.put("type", "ready");
-            params.put("stage", stage);
+            p.put("stage", stage);
+            Iterator keys = params.keys();
+            while (keys.hasNext()) { // 复制参数
+                String key = (String) keys.next();
+                p.put(key, params.getString(key));
+            }
             data.put("params", params);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -219,13 +247,24 @@ public class MainActivity extends AppCompatActivity
         });
     }
 
-    private void setMainText (String text) {
+    private void setStage(String text) {
         final String message = text;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                TextView mainText = (TextView) findViewById(R.id.mainText);
-                mainText.setText(message);
+                TextView stageText = (TextView) findViewById(R.id.stageText);
+                stageText.setText("stage=" + message);
+            }
+        });
+    }
+
+    private void setStatus(String text) {
+        final String message = text;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                TextView statusText = (TextView) findViewById(R.id.statusText);
+                statusText.setText("status=" + message);
             }
         });
     }
