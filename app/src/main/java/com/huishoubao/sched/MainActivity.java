@@ -64,8 +64,9 @@ public class MainActivity extends AppCompatActivity
     private void initSocket () {
         SchedApplication app = (SchedApplication) this.getApplication();
         socket = app.getSocket();
-        socket.on(Socket.EVENT_CONNECT, onConnect);
-        socket.on("pong", onPong);
+        // socket.on("pong", onPong);
+        socket.on(Socket.EVENT_ERROR, onError);
+        socket.on(Socket.EVENT_RECONNECT, onReconnect);
         socket.on("authenticated", onAuthenticated);
         socket.on("tasks created", onTaskCreated);
         socket.on("commands goto", onGoto);
@@ -127,14 +128,6 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    private Emitter.Listener onConnect = new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            toast("Connected");
-            setStatus("Connected");
-        }
-    };
-
     private Emitter.Listener onTaskCreated = new Emitter.Listener() {
         @Override
         public void call(Object... args) {
@@ -147,6 +140,22 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void call(Object... args) {
             toast("Pone");
+        }
+    };
+
+    private Emitter.Listener onError = new Emitter.Listener() {
+        @Override
+        public void call(Object... args) {
+            toast("Error");
+        }
+    };
+
+    private Emitter.Listener onReconnect = new Emitter.Listener() {
+        @Override
+        public void call(Object... args) {
+            SchedApplication app = (SchedApplication) getApplication();
+            app.login();
+            toast("Reconnect");
         }
     };
 
